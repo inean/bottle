@@ -73,7 +73,7 @@ class ReFilter(FilterMixin):
 
     @staticmethod
     def parse(conf):
-        return conf or '[^/]+'
+        return conf or '[^/]+', None
 
 #pylint: disable-msg=R0903
 class IntFilter(FilterMixin):
@@ -81,7 +81,7 @@ class IntFilter(FilterMixin):
 
     @staticmethod
     def parse(conf):
-        return r'-?\d+'
+        return r'-?\d+', int
 
 #pylint: disable-msg=R0903
 class FloatFilter(FilterMixin):
@@ -89,7 +89,7 @@ class FloatFilter(FilterMixin):
 
     @staticmethod
     def parse(conf):
-        return r'-?[\d.]+'
+        return r'-?[\d.]+', float
 
 #pylint: disable-msg=R0903
 class PathFilter(FilterMixin):
@@ -97,7 +97,7 @@ class PathFilter(FilterMixin):
 
     @staticmethod
     def parse(conf):
-        return r'.+?'
+        return r'.+?', None
 
 
 class RuleSyntaxError(Exception):
@@ -106,6 +106,8 @@ class RuleSyntaxError(Exception):
     declared
     """
 
+class RouteNotFoundError(Exception):
+    """Raised when rule doesn't match path"""
         
 class Rule(object):
     """BottlePy route builder"""
@@ -148,29 +150,31 @@ class Rule(object):
         def process_key(key, mode, conf):
             """Get a valid regex for key and mode"""
             if mode:
-                mask = Filters.parse(mode, conf)
+                mask = Filters.parse(mode, conf)[0]
                 return '(?P<%s>%s)' % (key, mask) if key else '(?:%s)' % mask
             if key:
                 return re.escape(key)
             # catch all
             return ''
         # evaluate rule
-        is_static, pattern = True, ''
+        is_static, pattern, filters = True, '', {}
         for key, mode, conf in cls._eval(rule):
             pattern   += process_key(key, mode, conf)
             is_static  = is_static and mode
+            in_filter  = key and mode
+            in_filter and filters.setdefault(key, Filters.parse(mode, conf)[1])
         # if is a dinamic one, calculate a valid name and a valid regex
         name, regex = rule, rule
         if not is_static:
             try:
-                regex = re.sub(r'(\\*)(\(\?P<[^>]*>|\((?!\?))', subs, pattern)
-                name  = '^(%s)$' % pattern
+                name  = re.sub(r'(\\*)(\(\?P<[^>]*>|\((?!\?))', subs, pattern)
+                regex = '^(%s)$' % pattern
                 _     = re.compile(name).match
             except re.error, ex:
                 error = "Bad Route: %s (%s)" % (rule, ex.message)
                 raise RuleSyntaxError(error)
         # return name and a valid regex for pattern
-        return [name, regex]
+        return [name, regex, filters]
 
 #pylint: disable-msg=C0103
 class Path(object):
@@ -190,20 +194,38 @@ class Path(object):
     @property
     def name(self):
         """Route name"""
-        return self._pattern[1]
+        return self._pattern[0]
 
     @property
     def pattern(self):
         """Full pattern route"""
-        return self._pattern[0]
+        return self._pattern[1]
 
+    @property
+    def filters(self):
+        """Return filters to convert from path"""
+        return self._pattern[2]
+        
     def match(self, path):
         """Get a collection of valid matches"""
         #pylint: disable-msg=W0201
         if not hasattr(self, '_match_regex'):
             self._match_regex = re.compile(self.pattern)
+        # get match
         match = self._match_regex.match(path)
-        return None if match is None else match.groupdict()
+        # raise error when fail
+        if match is None:
+            raise RouteNotFoundError(self.name, path)
+        # parse parameters
+        args = match.groupdict()
+        for name, wfilter in self.filters.iteritems():
+            try:
+                if wfilter is not None:
+                    args[name] = wfilter(args[name])
+            except ValueError:
+                err = 'Wrong format for ' + name + '(' + value + ')'
+                raise RouteFilterError(err)
+        return args
         
 # Tornado Stuff
 import tornado.web
@@ -278,7 +300,6 @@ class route(Path):
     def host(self):
         """Route associated host"""
         return self._host
-
 
     @property
     def handler(self):
