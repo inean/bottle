@@ -1,6 +1,5 @@
-include bottle.py
+include routes.py
 include setup.py
 include README.rst
 include LICENSE.txt
-include test/views/*.tpl
 include test/*.py
