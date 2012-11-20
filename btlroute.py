@@ -2,13 +2,14 @@
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
-Routes
+BtlRoute
 """
 
 from __future__ import absolute_import
 
 __author__  = "Carlos Martín"
 __license__ = "See LICENSE for details"
+__version__ = "0.12-dev"
 
 # Import here any required modules.
 import re

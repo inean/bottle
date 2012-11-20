@@ -47,10 +47,10 @@ def run():
         # recognized
         cnew = coverage.coverage(data_suffix=True, branch=True)
         cnew.combine()
-        cnew.report(morfs=['routes.py']+test_files, show_missing=False)
+        cnew.report(morfs=['btlroute.py']+test_files, show_missing=False)
         if 'html' in sys.argv:
             print
-            cnew.html_report(morfs=['routes.py']+test_files, directory='../build/coverage')
+            cnew.html_report(morfs=['btlroute.py']+test_files, directory='../build/coverage')
 
     sys.exit((result.errors or result.failures) and 1 or 0)
 

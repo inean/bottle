@@ -6,15 +6,15 @@ from setuptools import setup
 if sys.version_info < (2,5):
     raise NotImplementedError("Sorry, you need at least Python 2.5 or Python 3.x to use routes.")
 
-import routes
+import btlroute
 
-setup(name='routes',
-      version=routes.__version__,
+setup(name='btlroute',
+      version=btlroute.__version__,
       description='Fast and simple WSGI-framework for small web-applications.',
-      long_description=routes.__doc__,
-      author=routes.__author__,
+      long_description=btlroute.__doc__,
+      author=btlroute.__author__,
       author_email='marc@gsites.de',
-      py_modules=['routes'],
+      py_modules=['btlroute'],
       license='MIT',
       platforms = 'any',
       test_suite = 'test',
