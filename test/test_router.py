@@ -1,11 +1,11 @@
 import unittest
-import bottle
+import routes
 
 class TestRouter(unittest.TestCase):
     CGI=False
     
     def setUp(self):
-        self.r = bottle.Router()
+        self.r = routes.Router()
     
     def add(self, path, target, method='GET', **ka):
         self.r.add(path, method, target, **ka)
@@ -32,7 +32,7 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/:test/', '/test/', test='test') # Middle
         self.assertMatches(':test', 'test', test='test') # Full wildcard
         self.assertMatches('/:#anon#/match', '/anon/match') # Anon wildcards
-        self.assertRaises(bottle.HTTPError, self.match, '//no/m/at/ch/')
+        self.assertRaises(routes.HTTPError, self.match, '//no/m/at/ch/')
 
     def testNewSyntax(self):
         self.assertMatches('/static', '/static')
@@ -44,27 +44,27 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/<test>/', '/test/', test='test') # Middle
         self.assertMatches('<test>', 'test', test='test') # Full wildcard
         self.assertMatches('/<:re:anon>/match', '/anon/match') # Anon wildcards
-        self.assertRaises(bottle.HTTPError, self.match, '//no/m/at/ch/')
+        self.assertRaises(routes.HTTPError, self.match, '//no/m/at/ch/')
 
     def testValueErrorInFilter(self):
         self.r.add_filter('test', lambda x: ('.*', int, int))
 
         self.assertMatches('/int/<i:test>', '/int/5', i=5) # No tail
-        self.assertRaises(bottle.HTTPError, self.match, '/int/noint')
+        self.assertRaises(routes.HTTPError, self.match, '/int/noint')
 
 
     def testIntFilter(self):
         self.assertMatches('/object/<id:int>', '/object/567', id=567)
-        self.assertRaises(bottle.HTTPError, self.match, '/object/abc')
+        self.assertRaises(routes.HTTPError, self.match, '/object/abc')
 
     def testFloatFilter(self):
         self.assertMatches('/object/<id:float>', '/object/1', id=1)
         self.assertMatches('/object/<id:float>', '/object/1.1', id=1.1)
         self.assertMatches('/object/<id:float>', '/object/.1', id=0.1)
         self.assertMatches('/object/<id:float>', '/object/1.', id=1)
-        self.assertRaises(bottle.HTTPError, self.match, '/object/abc')
-        self.assertRaises(bottle.HTTPError, self.match, '/object/')
-        self.assertRaises(bottle.HTTPError, self.match, '/object/.')
+        self.assertRaises(routes.HTTPError, self.match, '/object/abc')
+        self.assertRaises(routes.HTTPError, self.match, '/object/')
+        self.assertRaises(routes.HTTPError, self.match, '/object/.')
 
     def testPathFilter(self):
         self.assertMatches('/<id:path>/:f', '/a/b', id='a', f='b')
@@ -78,7 +78,7 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/func(:param)', '/func(foo)', param='foo')
         self.assertMatches('/func2(:param#(foo|bar)#)', '/func2(foo)', param='foo')
         self.assertMatches('/func2(:param#(foo|bar)#)', '/func2(bar)', param='bar')
-        self.assertRaises(bottle.HTTPError, self.match, '/func2(baz)')
+        self.assertRaises(routes.HTTPError, self.match, '/func2(baz)')
 
     def testErrorInPattern(self):
         self.assertRaises(Exception, self.assertMatches, '/:bug#(#/', '/foo/')
@@ -94,7 +94,7 @@ class TestRouter(unittest.TestCase):
         self.assertEqual('/hello/world/?q=value', url)
 
         # RouteBuildError: Missing URL argument: 'test'
-        self.assertRaises(bottle.RouteBuildError, build, 'test')
+        self.assertRaises(routes.RouteBuildError, build, 'test')
 
     def testBuildAnon(self):
         add, build = self.add, self.r.build
@@ -107,7 +107,7 @@ class TestRouter(unittest.TestCase):
         self.assertEqual('/anon/hello?q=value', url)
 
         # RouteBuildError: Missing URL argument: anon0.
-        self.assertRaises(bottle.RouteBuildError, build, 'anonroute')
+        self.assertRaises(routes.RouteBuildError, build, 'anonroute')
 
     def testBuildFilter(self):
         add, build = self.add, self.r.build
