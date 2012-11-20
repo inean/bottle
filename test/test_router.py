@@ -2,25 +2,13 @@ import unittest
 import routes
 
 class TestRouter(unittest.TestCase):
-    CGI=False
-    
-    def setUp(self):
-        self.r = routes.Router()
-    
-    def add(self, path, target, method='GET', **ka):
-        self.r.add(path, method, target, **ka)
+    def match(self, rule, url):
+        return routes.Path(rule).match(url)
 
-    def match(self, path, method='GET'):
-        env = {'PATH_INFO': path, 'REQUEST_METHOD': method}
-        if self.CGI:
-            env['wsgi.run_once'] = 'true'
-        return self.r.match(env)
-
-    def assertMatches(self, rule, url, method='GET', **args):
-        self.add(rule, rule, method)
-        target, urlargs = self.match(url, method)
-        self.assertEqual(rule, target)
-        self.assertEqual(args, urlargs)
+    def assertMatches(self, rule, url, **args):
+        retval = self.match(rule, url)
+        self.assertNotEqual(retval, None)
+        self.assertEqual(args, retval)
 
     def testBasic(self):
         self.assertMatches('/static', '/static')
@@ -32,7 +20,7 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/:test/', '/test/', test='test') # Middle
         self.assertMatches(':test', 'test', test='test') # Full wildcard
         self.assertMatches('/:#anon#/match', '/anon/match') # Anon wildcards
-        self.assertRaises(routes.HTTPError, self.match, '//no/m/at/ch/')
+        self.assertRaises(routes.RouteNotFoundError, self.match, '/:#anon#/match', '//no/m/at/ch/')
 
     def testNewSyntax(self):
         self.assertMatches('/static', '/static')
@@ -44,27 +32,27 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/<test>/', '/test/', test='test') # Middle
         self.assertMatches('<test>', 'test', test='test') # Full wildcard
         self.assertMatches('/<:re:anon>/match', '/anon/match') # Anon wildcards
-        self.assertRaises(routes.HTTPError, self.match, '//no/m/at/ch/')
+        self.assertRaises(routes.RouteNotFoundError, self.match, '/<:re:anon>/match', '//no/m/at/ch/')
 
     def testValueErrorInFilter(self):
-        self.r.add_filter('test', lambda x: ('.*', int, int))
-
+        class TestFilter(routes.FilterMixin):
+            @staticmethod
+            def parse(conf): return r'-?\d+', int
         self.assertMatches('/int/<i:test>', '/int/5', i=5) # No tail
-        self.assertRaises(routes.HTTPError, self.match, '/int/noint')
-
+        self.assertRaises(routes.RouteNotFoundError, self.match, '/int/<i:test>', '//no/m/at/ch/')
 
     def testIntFilter(self):
         self.assertMatches('/object/<id:int>', '/object/567', id=567)
-        self.assertRaises(routes.HTTPError, self.match, '/object/abc')
+        self.assertRaises(routes.RouteNotFoundError, self.match, '/object/<id:int>', '/object/abc')
 
     def testFloatFilter(self):
         self.assertMatches('/object/<id:float>', '/object/1', id=1)
         self.assertMatches('/object/<id:float>', '/object/1.1', id=1.1)
         self.assertMatches('/object/<id:float>', '/object/.1', id=0.1)
         self.assertMatches('/object/<id:float>', '/object/1.', id=1)
-        self.assertRaises(routes.HTTPError, self.match, '/object/abc')
-        self.assertRaises(routes.HTTPError, self.match, '/object/')
-        self.assertRaises(routes.HTTPError, self.match, '/object/.')
+        self.assertRaises(routes.RouteNotFoundError,  self.match, '/object/<id:float>', '/object/abc')
+        self.assertRaises(routes.RouteNotFoundError,  self.match, '/object/<id:float>', '/object/')
+        self.assertRaises(routes.RouteBadFilterError, self.match, '/object/<id:float>', '/object/.')
 
     def testPathFilter(self):
         self.assertMatches('/<id:path>/:f', '/a/b', id='a', f='b')
@@ -78,56 +66,10 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/func(:param)', '/func(foo)', param='foo')
         self.assertMatches('/func2(:param#(foo|bar)#)', '/func2(foo)', param='foo')
         self.assertMatches('/func2(:param#(foo|bar)#)', '/func2(bar)', param='bar')
-        self.assertRaises(routes.HTTPError, self.match, '/func2(baz)')
+        self.assertRaises(routes.RouteNotFoundError, self.match, '/func2(:param#(foo|bar)#)', '/func2(baz)')
 
     def testErrorInPattern(self):
         self.assertRaises(Exception, self.assertMatches, '/:bug#(#/', '/foo/')
-
-    def testBuild(self):
-        add, build = self.add, self.r.build
-        add('/:test/:name#[a-z]+#/', 'handler', name='testroute')
-
-        url = build('testroute', test='hello', name='world')
-        self.assertEqual('/hello/world/', url)
-
-        url = build('testroute', test='hello', name='world', q='value')
-        self.assertEqual('/hello/world/?q=value', url)
-
-        # RouteBuildError: Missing URL argument: 'test'
-        self.assertRaises(routes.RouteBuildError, build, 'test')
-
-    def testBuildAnon(self):
-        add, build = self.add, self.r.build
-        add('/anon/:#.#', 'handler', name='anonroute')
-
-        url = build('anonroute', 'hello')
-        self.assertEqual('/anon/hello', url)
-
-        url = build('anonroute', 'hello', q='value')
-        self.assertEqual('/anon/hello?q=value', url)
-
-        # RouteBuildError: Missing URL argument: anon0.
-        self.assertRaises(routes.RouteBuildError, build, 'anonroute')
-
-    def testBuildFilter(self):
-        add, build = self.add, self.r.build
-        add('/int/<:int>', 'handler', name='introute')
-
-        url = build('introute', '5')
-        self.assertEqual('/int/5', url)
-
-        # RouteBuildError: Missing URL argument: anon0.
-        self.assertRaises(ValueError, build, 'introute', 'hello')
-
-    def test_method(self):
-        #TODO Test method handling. This is done in the router now.
-        pass
-
-
-class TestRouterInCGIMode(TestRouter):
-    ''' Makes no sense since the default route does not optimize CGI anymore.'''
-    CGI = True
-
 
 if __name__ == '__main__': #pragma: no cover
     unittest.main()

@@ -36,13 +36,12 @@ if 'coverage' in sys.argv:
 suite = unittest.defaultTestLoader.loadTestsFromNames(test_names)
 
 def run():
-    import routes
-    routes.debug(True)
     vlevel = 2 if 'verbose' in sys.argv else 0
     result = unittest.TextTestRunner(verbosity=vlevel).run(suite)
 
     if cov:
         cov.stop()
+        cov.html_report()
         cov.save()
         # Recreate coverage object so new files created in other processes are
         # recognized

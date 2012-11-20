@@ -11,12 +11,11 @@ __author__  = "Carlos Martín"
 __license__ = "See LICENSE for details"
 
 # Import here any required modules.
-import sys
 import re
+import sys
 import itertools
 
-__all__ = ['Route', 'route']
-
+__all__ = ['FilterMixin', 'Path']
 
 class Filters(object):
     """Singleton class to fetch filters"""
@@ -108,7 +107,10 @@ class RuleSyntaxError(Exception):
 
 class RouteNotFoundError(Exception):
     """Raised when rule doesn't match path"""
-        
+
+class RouteBadFilterError(Exception):
+    """Bad filter"""
+    
 class Rule(object):
     """BottlePy route builder"""
     
@@ -222,9 +224,8 @@ class Path(object):
             try:
                 if wfilter is not None:
                     args[name] = wfilter(args[name])
-            except ValueError:
-                err = 'Wrong format for ' + name + '(' + value + ')'
-                raise RouteFilterError(err)
+            except ValueError, err:
+                raise RouteBadFilterError(err.message)
         return args
         
 # Tornado Stuff
