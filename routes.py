@@ -12,8 +12,6 @@ __license__ = "See LICENSE for details"
 
 # Import here any required modules.
 import re
-import sys
-import itertools
 
 __all__ = ['FilterMixin', 'Path']
 
@@ -163,8 +161,8 @@ class Rule(object):
         for key, mode, conf in cls._eval(rule):
             pattern   += process_key(key, mode, conf)
             is_static  = is_static and mode
-            in_filter  = key and mode
-            in_filter and filters.setdefault(key, Filters.parse(mode, conf)[1])
+            #pylint: disable-msg = W0106, C0301
+            key and mode and filters.setdefault(key, Filters.parse(mode, conf)[1])
         # if is a dinamic one, calculate a valid name and a valid regex
         name, regex = rule, rule
         if not is_static:
@@ -227,104 +225,4 @@ class Path(object):
             except ValueError, err:
                 raise RouteBadFilterError(err.message)
         return args
-        
-# Tornado Stuff
-import tornado.web
-
-class TornadoRoute(Path):
-    """Route Singleton"""
-
-    _routes = []
-
-    @classmethod
-    def add(cls, handler):
-        """Add route to available routes"""
-        iterable = itertools.imap(lambda x: x == route, cls._routes)
-        if not handler.override and any(iterable):
-            return
-        cls._routes.append(handler)
-
-    @staticmethod
-    def reset(application):
-        """Reset application handlers"""
-        application.handlers = []
-        application.named_handlers = {}
-
-    @classmethod
-    def merge(cls, application):
-        """Add routes to the `tornado.web.Application`"""
-        hosts = {}
-        for host, handler in application.handlers:
-            hosts[host.pattern] = handler
-        for rule in cls._routes:
-            hosts.setdefault(rule.host, []).append(rule.spec)
-        # now merge hosts
-        cls.reset(application)
-        for host, spec in hosts.iteritems():
-            application.add_handlers(host, spec)
-        return application
-
-        
-#pylint: disable-msg=C0103
-class route(Path):
-    """The `Route` decorator"""
-
-    #pylint: disable-msg=W0212
-    def __init__(self, rule, initialize=None, host=".*$", override=True):
-        super(route, self).__init__(rule)
-        self._host     = host
-        self._method   = None
-        self._override = override
-        self._args     = initialize or {}
-
-        # If it's decorating a method, we need to set 'handler's name'
-        self._handler  = sys._getframe(1).f_code.co_name
-
-    def __call__(self, handler):
-        try:
-            # func_name will fail if route is used as class
-            # decorator. If so, store handler class name and set
-            # method to GET
-            self._method = handler.func_name.upper()
-        except AttributeError:
-            self._handler = handler.__name__
-            self._method  = 'GET'
-        # store in route collections
-        TornadoRoute.add(self)
-        return handler
-
-    def __repr__(self):
-        return "%s: <%s,%s> (%s)" % \
-            (self._host, self._rule, self._pattern, self._handler)
-
-    @property
-    def host(self):
-        """Route associated host"""
-        return self._host
-
-    @property
-    def handler(self):
-        """Class associated to this route"""
-        return self._handler
-
-    @property
-    def method(self):
-        """Verb associated to this route"""
-        return self._method
-
-    @property
-    def spec(self):
-        """A tornado spec which defiles this route"""
-        return tornado.web.URLSpec(self._pattern,
-                                   eval(self._handler),
-                                   self._args,
-                                   ".".join((self._handler, self._method)))
-
-    @property
-    def override(self):
-        """
-        True if this route only should be considered if no one hasb
-        been previously defined for this path
-        """
-        return self._override
 
