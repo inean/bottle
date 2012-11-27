@@ -9,7 +9,7 @@ from __future__ import absolute_import
 
 __author__  = "Carlos Martín"
 __license__ = "See LICENSE for details"
-__version__ = "0.12-dev1"
+__version__ = "0.12-dev2"
 
 # Import here any required modules.
 import re
@@ -195,8 +195,13 @@ class Path(object):
     @property
     def name(self):
         """Route name"""
-        return self._pattern[0]
+        return self._rule
 
+    @property
+    def pcre(self):
+        """Return PCRE like route"""
+        return self._pattern[0]
+        
     @property
     def pattern(self):
         """Full pattern route"""
