@@ -1,5 +1,5 @@
-include routes.py
+include btlroute.py
 include setup.py
 include README.rst
-include LICENSE.txt
+include LICENSE
 include test/*.py
