@@ -58,6 +58,9 @@ class TestRouter(unittest.TestCase):
         self.assertMatches('/<id:path>/:f', '/a/b', id='a', f='b')
         self.assertMatches('/<id:path>', '/a', id='a')
 
+    def testPointerFilter(self):
+        self.assertMatches('/<path:pointer>', "/[@id=1,@b='3']", path = {'id':1, 'b':'3'})
+        
     def testWildcardNames(self):
         self.assertMatches('/alpha/:abc', '/alpha/alpha', abc='alpha')
         self.assertMatches('/alnum/:md5', '/alnum/sha1', md5='sha1')

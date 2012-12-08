@@ -97,6 +97,29 @@ class PathFilter(FilterMixin):
     def parse(conf):
         return r'.+?', None
 
+class PointerFilter(FilterMixin):
+    
+    RE = re.compile(' |@')
+    
+    @classmethod
+    def convert(cls, value):
+        # create a filter generator
+        pfilter, rfilter = [], cls.RE.sub("", value)[1:-1].split(",")
+        for key, value in ((item.split("=")) for item in rfilter):
+            try:
+                # try to parse integers
+                value = int(value)
+            except ValueError:
+                # fallback to a string
+                value = value.strip(' \'"')
+            finally:
+                pfilter.append((key, value,))
+        return dict(pfilter)
+        
+    @staticmethod
+    def parse(conf):
+        return '\[.*\]', PointerFilter.convert
+
 
 class RuleSyntaxError(Exception):
     """
