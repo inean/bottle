@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 __author__ = "Carlos Martín"
 __license__ = "See LICENSE for details"
-__version__ = "0.12-dev2"
+__version__ = "0.12.1"
 
 # Import here any required modules.
 import re
