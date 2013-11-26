@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -7,7 +6,7 @@ BtlRoute
 
 from __future__ import absolute_import
 
-__author__  = "Carlos Martín"
+__author__ = "Carlos Martín"
 __license__ = "See LICENSE for details"
 __version__ = "0.12-dev2"
 
@@ -15,6 +14,7 @@ __version__ = "0.12-dev2"
 import re
 
 __all__ = ['FilterMixin', 'Path']
+
 
 class Filters(object):
     """Singleton class to fetch filters"""
@@ -67,11 +67,12 @@ class FilterMixin(object):
 class ReFilter(FilterMixin):
     """Regular expression based filter"""
 
-    alias = ["default",]
+    alias = ["default"]
 
     @staticmethod
     def parse(conf):
         return conf or '[^/]+', None
+
 
 #pylint: disable-msg=R0903
 class IntFilter(FilterMixin):
@@ -81,6 +82,7 @@ class IntFilter(FilterMixin):
     def parse(conf):
         return r'-?\d+', int
 
+
 #pylint: disable-msg=R0903
 class FloatFilter(FilterMixin):
     """Float based filter"""
@@ -88,6 +90,7 @@ class FloatFilter(FilterMixin):
     @staticmethod
     def parse(conf):
         return r'-?[\d.]+', float
+
 
 #pylint: disable-msg=R0903
 class PathFilter(FilterMixin):
@@ -97,10 +100,11 @@ class PathFilter(FilterMixin):
     def parse(conf):
         return r'.+?', None
 
+
 class PointerFilter(FilterMixin):
-    
+
     RE = re.compile(' |@')
-    
+
     @classmethod
     def convert(cls, value):
         # create a filter generator
@@ -115,7 +119,7 @@ class PointerFilter(FilterMixin):
             finally:
                 pfilter.append((key, value,))
         return dict(pfilter)
-        
+
     @staticmethod
     def parse(conf):
         return '\[.*\]', PointerFilter.convert
@@ -127,19 +131,22 @@ class RuleSyntaxError(Exception):
     declared
     """
 
+
 class RouteNotFoundError(Exception):
     """Raised when rule doesn't match path"""
 
+
 class RouteBadFilterError(Exception):
     """Bad filter"""
-    
+
+
 class Rule(object):
     """BottlePy route builder"""
-    
-    rule_syntax = re.compile(                             \
-        '(\\\\*)'                                         \
-        '(?:(?::([a-zA-Z_][a-zA-Z_0-9]*)?()(?:#(.*?)#)?)' \
-        '|(?:<([a-zA-Z_][a-zA-Z_0-9]*)?(?::([a-zA-Z_]*)'  \
+
+    rule_syntax = re.compile(
+        '(\\\\*)'
+        '(?:(?::([a-zA-Z_][a-zA-Z_0-9]*)?()(?:#(.*?)#)?)'
+        '|(?:<([a-zA-Z_][a-zA-Z_0-9]*)?(?::([a-zA-Z_]*)'
         '(?::((?:\\\\.|[^\\\\>]+)+)?)?)?>))')
 
     @classmethod
@@ -151,12 +158,13 @@ class Rule(object):
             prefix += rule[offset:match.start()]
             #pylint:disable-msg=C0103
             g = match.groups()
-            if len(g[0])%2: # Escaped wildcard
+            if len(g[0]) % 2:  # Escaped wildcard
                 prefix += match.group(0)[len(g[0]):]
                 offset = match.end()
                 continue
             #pylint:disable-msg=C0321
-            if prefix: yield prefix, None, None
+            if prefix:
+                yield prefix, None, None
             name, filtr, conf = g[1:4] if not g[2] is None else g[4:7]
             filtr = filtr or "default"
             yield name, filtr, conf or None
@@ -171,6 +179,7 @@ class Rule(object):
         def subs(m):
             """Group selector"""
             return m.group(0) if len(m.group(1)) % 2 else m.group(1) + '(?:'
+
         def process_key(key, mode, conf):
             """Get a valid regex for key and mode"""
             if mode:
@@ -183,22 +192,23 @@ class Rule(object):
         # evaluate rule
         is_static, pattern, filters = True, '', {}
         for key, mode, conf in cls._eval(rule):
-            pattern   += process_key(key, mode, conf)
-            is_static  = is_static and mode
+            pattern += process_key(key, mode, conf)
+            is_static = is_static and mode
             #pylint: disable-msg = W0106, C0301
             key and mode and filters.setdefault(key, Filters.parse(mode, conf)[1])
         # if is a dinamic one, calculate a valid name and a valid regex
         name, regex = rule, rule
         if not is_static:
             try:
-                name  = re.sub(r'(\\*)(\(\?P<[^>]*>|\((?!\?))', subs, pattern)
-                regex = '^(%s)$' % pattern
-                _     = re.compile(name).match
+                name = re.sub(r'(\\*)(\(\?P<[^>]*>|\((?!\?))', subs, pattern)
+                regex = '^%s$' % pattern
+                _ = re.compile(name).match
             except re.error, ex:
                 error = "Bad Route: %s (%s)" % (rule, ex.message)
                 raise RuleSyntaxError(error)
         # return name and a valid regex for pattern
         return [name, regex, filters]
+
 
 #pylint: disable-msg=C0103
 class Path(object):
@@ -214,7 +224,7 @@ class Path(object):
 
     def __eq__(self, other):
         return self.name == other.name
-        
+
     @property
     def name(self):
         """Route name"""
@@ -224,7 +234,7 @@ class Path(object):
     def pcre(self):
         """Return PCRE like route"""
         return self._pattern[0]
-        
+
     @property
     def pattern(self):
         """Full pattern route"""
@@ -234,7 +244,7 @@ class Path(object):
     def filters(self):
         """Return filters to convert from path"""
         return self._pattern[2]
-        
+
     def match(self, path):
         """Get a collection of valid matches"""
         #pylint: disable-msg=W0201
@@ -254,4 +264,3 @@ class Path(object):
             except ValueError, err:
                 raise RouteBadFilterError(err.message)
         return args
-
