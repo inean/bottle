@@ -8,7 +8,7 @@ from __future__ import absolute_import
 
 __author__ = "Carlos Martín"
 __license__ = "See LICENSE for details"
-__version__ = "0.12.1"
+__version__ = "0.12.2"
 
 # Import here any required modules.
 import re
@@ -174,7 +174,7 @@ class Rule(object):
 
     #pylint:disable-msg=C0103
     @classmethod
-    def process_rule(cls, rule):
+    def process_rule(cls, rule, escape=True):
         """Get a valid name and regex for a rule"""
         def subs(m):
             """Group selector"""
@@ -186,7 +186,7 @@ class Rule(object):
                 mask = Filters.parse(mode, conf)[0]
                 return '(?P<%s>%s)' % (key, mask) if key else '(?:%s)' % mask
             if key:
-                return re.escape(key)
+                return re.escape(key) if escape else key
             # catch all
             return ''
         # evaluate rule
@@ -215,9 +215,9 @@ class Path(object):
     """The `Route` decorator"""
 
     #pylint: disable-msg=W0212
-    def __init__(self, rule):
+    def __init__(self, rule, escape=True):
         self._rule = rule
-        self._pattern = Rule.process_rule(self._rule)
+        self._pattern = Rule.process_rule(self._rule, escape)
 
     def __repr__(self):
         return "<%s>" % self.pattern
